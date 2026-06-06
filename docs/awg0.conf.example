@@ -1,0 +1,29 @@
+{
+  "_comment": "pharos-awg config. Use EITHER an inline resolved 'tunnel' (shown) OR a 'profile' reference (the daemon resolves the .pharos itself). Write at mode 0600.",
+
+  "interface": "awg0",
+  "address": "10.86.0.5",
+  "mtu": 1420,
+  "routing": "none",
+  "log_level": "error",
+
+  "tunnel": {
+    "private_key": "<client private key, base64>",
+    "server_public_key": "<node public key, base64>",
+    "preshared_key": "<optional PSK, base64>",
+    "endpoint": "203.0.113.7:443",
+    "allowed_ips": ["0.0.0.0/0", "::/0"],
+    "keepalive": 25,
+    "obfuscation": {
+      "jc": 5, "jmin": 25, "jmax": 825,
+      "s1": 20, "s2": 30, "s3": 40, "s4": 50,
+      "h1": 10, "h2": 11, "h3": 12, "h4": 13
+    }
+  },
+
+  "_profile_alternative": {
+    "path": "/usr/local/etc/pharosvpn/fleet.pharos",
+    "password": "<for password-mode profiles; omit for none-mode>",
+    "node": ""
+  }
+}

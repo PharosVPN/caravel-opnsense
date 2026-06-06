@@ -33,10 +33,17 @@ the single data-plane strategy. Cross-compiled `GOOS=freebsd`.
 
 ## Status
 
-🚧 Pre-alpha — **design complete** (see the design doc), implementation pending.
-Recommended order: **client mode** (the headline) → relay → experimental node
-(its cascade netpolicy needs a `pf`/`setfib` rewrite). coxswain runs but is
-discouraged on an edge box.
+🚧 Pre-alpha. **Design complete** (see the design doc); implementation underway.
+
+- ✅ **`pharos-awg`** — the userspace AmneziaWG data-plane daemon
+  ([`cmd/pharos-awg`](cmd/pharos-awg), [`internal/awgd`](internal/awgd)). Wraps
+  caravel's `vp` engine over a FreeBSD tun, applies addressing/routing, serves the
+  UAPI socket. Cross-compiles `GOOS=freebsd` and is **verified on the live VM**
+  (interface bring-up/teardown, obfuscated data plane, UAPI). See
+  [`docs/pharos-awg.md`](docs/pharos-awg.md).
+- ⬜ FreeBSD `pkg` (rc.d + manifest) → **client mode** plugin (the headline) →
+  relay → experimental node (its cascade netpolicy needs a `pf`/`setfib` rewrite)
+  → coxswain (runs, but discouraged on an edge box).
 
 ## License
 

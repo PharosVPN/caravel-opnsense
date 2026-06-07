@@ -50,11 +50,11 @@ const (
 // .pharos Profile the daemon resolves itself (keeping profile decryption in the
 // audited Go core, never in PHP — DESIGN §6).
 type Config struct {
-	Interface string      `json:"interface"`  // tun name; default awg0
-	Address   string      `json:"address"`    // bare tunnel IP; from the profile if empty
-	MTU       int         `json:"mtu"`        // default 1420
-	Routing   RoutingMode `json:"routing"`    // full | split | none; default full
-	LogLevel  string      `json:"log_level"`  // silent | error | verbose; default error
+	Interface string      `json:"interface"` // tun name; default awg0
+	Address   string      `json:"address"`   // bare tunnel IP; from the profile if empty
+	MTU       int         `json:"mtu"`       // default 1420
+	Routing   RoutingMode `json:"routing"`   // full | split | none; default full
+	LogLevel  string      `json:"log_level"` // silent | error | verbose; default error
 
 	Tunnel  *TunnelConfig `json:"tunnel,omitempty"`  // a pre-resolved tunnel
 	Profile *ProfileRef   `json:"profile,omitempty"` // or a .pharos to resolve
@@ -97,6 +97,7 @@ type Obfuscation struct {
 type ProfileRef struct {
 	Path     string `json:"path"`               // path to the .pharos file
 	Password string `json:"password,omitempty"` // for password-mode profiles
+	Profile  string `json:"profile,omitempty"`  // named connection config id/name; empty = first
 	Node     string `json:"node,omitempty"`     // node id/name; empty = entry/first hop
 }
 
@@ -174,7 +175,11 @@ func (c *Config) resolveFromProfile(r *Resolved) error {
 	if err != nil {
 		return fmt.Errorf("parse profile: %w", err)
 	}
-	node, err := p.Node(c.Profile.Node)
+	cp, err := p.Select(c.Profile.Profile)
+	if err != nil {
+		return fmt.Errorf("select profile: %w", err)
+	}
+	node, err := cp.Node(c.Profile.Node)
 	if err != nil {
 		return fmt.Errorf("select node: %w", err)
 	}

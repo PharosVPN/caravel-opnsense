@@ -22,8 +22,9 @@
   },
 
   "_profile_alternative": {
-    "path": "/usr/local/etc/pharosvpn/fleet.pharos",
+    "path": "/usr/local/etc/pharosvpn/awg0.pharos",
     "password": "<for password-mode profiles; omit for none-mode>",
-    "node": ""
+    "profile": "<named connection config id/name in the bundle; empty = first>",
+    "node": "<entry node id/name; empty = the cascade entry / first hop>"
   }
 }

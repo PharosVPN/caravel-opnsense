@@ -43,8 +43,10 @@ install -m 0755 "$ROOT/pkg/pharosvpn/usr/local/etc/rc.d/pharos-awg" "$STAGE/usr/
 
 sed "s/%%VERSION%%/$VER/" "$ROOT/pkg/pharosvpn/+MANIFEST.in" > "$WORK/pharosvpn.manifest"
 
-# plist: every file the pkg owns, prefix-relative
-( cd "$STAGE" && find usr -type f | sed 's,^,/,' ) > "$WORK/pharosvpn.plist"
+# plist: every file the pkg owns, prefix-relative. Exclude macOS AppleDouble
+# ._* sidecars (a build-host artifact) — a stray ._foo.inc would get require'd
+# by OPNsense's plugins.inc.d/*.inc glob and blow up.
+( cd "$STAGE" && find usr -type f ! -name '._*' | sed 's,^,/,' ) > "$WORK/pharosvpn.plist"
 
 pkg create -M "$WORK/pharosvpn.manifest" -p "$WORK/pharosvpn.plist" -r "$STAGE" -o "$OUT"
 echo "built: $OUT/pharosvpn-$VER.pkg"
@@ -94,7 +96,7 @@ scripts: {
 }
 EOF
 
-( cd "$PSTAGE" && find usr -type f | sed 's,^,/,' ) > "$WORK/os-pharosvpn.plist"
+( cd "$PSTAGE" && find usr -type f ! -name '._*' | sed 's,^,/,' ) > "$WORK/os-pharosvpn.plist"
 
 pkg create -M "$WORK/os-pharosvpn.manifest" -p "$WORK/os-pharosvpn.plist" -r "$PSTAGE" -o "$OUT"
 echo "built: $OUT/os-pharosvpn-$PVER.pkg"

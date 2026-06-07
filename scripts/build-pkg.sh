@@ -52,7 +52,10 @@ echo "built: $OUT/pharosvpn-$VER.pkg"
 ##############################################################################
 # 2) plugin pkg: os-pharosvpn (the MVC GUI + configd + templates + .inc)
 ##############################################################################
-PVER="${PLUGIN_VERSION:-1.0.0}"
+# Plugin version: env override, else read PLUGIN_VERSION from plugin/Makefile so
+# the pkg label can't drift from the source of truth (env > Makefile > fallback).
+PVER="${PLUGIN_VERSION:-$(awk -F= '/^PLUGIN_VERSION/{gsub(/[ \t]/,"",$2);print $2}' plugin/Makefile 2>/dev/null)}"
+PVER="${PVER:-1.0.0}"
 PSTAGE="$WORK/os-pharosvpn"
 mkdir -p "$PSTAGE/usr/local"
 # copy the whole plugin overlay tree into the staging prefix

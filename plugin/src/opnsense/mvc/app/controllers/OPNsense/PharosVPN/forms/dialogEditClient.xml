@@ -1,0 +1,70 @@
+<form>
+    <field>
+        <id>client.enabled</id>
+        <label>Enabled</label>
+        <type>checkbox</type>
+        <help>Bring this connection up. Only one PharosVPN client should be enabled at a time (single awg interface).</help>
+    </field>
+    <field>
+        <id>client.name</id>
+        <label>Name</label>
+        <type>text</type>
+        <help>A label for this connection.</help>
+    </field>
+    <field>
+        <id>client.interface</id>
+        <label>Interface</label>
+        <type>text</type>
+        <help>The tun interface name (awg0..awg999). Assign it under Interfaces and target the 'pharosvpn' group in firewall rules.</help>
+    </field>
+    <field>
+        <id>client.profile</id>
+        <label>Profile (.pharos)</label>
+        <type>textbox</type>
+        <style>tokenize</style>
+        <help>The imported .pharos profile blob (base64). Use the Import button to upload a file; encrypted-mode payloads stay sealed at rest.</help>
+    </field>
+    <field>
+        <id>client.password</id>
+        <label>Profile password</label>
+        <type>password</type>
+        <help>Password for a password-mode profile (stored so the daemon can open it unattended on reboot). Leave blank for none/account-mode profiles.</help>
+    </field>
+    <field>
+        <id>client.selected_profile</id>
+        <label>Connection</label>
+        <type>dropdown</type>
+        <help>Which named connection config inside the bundle to use. Populated from the imported profile.</help>
+    </field>
+    <field>
+        <id>client.selected_node</id>
+        <label>Entry node</label>
+        <type>dropdown</type>
+        <help>Which entry node to dial. Leave on the cascade entry / first hop unless you know otherwise.</help>
+    </field>
+    <field>
+        <id>client.routing</id>
+        <label>Routing mode</label>
+        <type>dropdown</type>
+        <help>Full = default route through the tunnel. Split = only the profile's AllowedIPs. None = let pf policy routing decide (recommended on a firewall, see LAN sources below).</help>
+    </field>
+    <field>
+        <id>client.mtu</id>
+        <label>MTU</label>
+        <type>text</type>
+        <help>Optional tunnel MTU override (default 1420).</help>
+    </field>
+    <field>
+        <id>client.lan_sources</id>
+        <label>LAN sources to route</label>
+        <type>text</type>
+        <style>tokenize</style>
+        <help>LAN networks/hosts to policy-route through the tunnel (e.g. 192.168.1.0/24). The firewall's own / management traffic is never routed. Leave empty to add no automatic policy-route.</help>
+    </field>
+    <field>
+        <id>client.killswitch</id>
+        <label>Kill-switch</label>
+        <type>checkbox</type>
+        <help>Fail closed: block the routed LAN sources from leaking to the WAN if the tunnel drops.</help>
+    </field>
+</form>

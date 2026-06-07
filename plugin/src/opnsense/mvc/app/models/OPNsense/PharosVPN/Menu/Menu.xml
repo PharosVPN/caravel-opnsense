@@ -1,0 +1,9 @@
+<menu>
+    <VPN>
+      <PharosVPN cssClass="fa fa-shield fa-fw" VisibleName="PharosVPN">
+          <Profiles order="10" url="/ui/pharosvpn/general#profiles"/>
+          <Connection order="20" url="/ui/pharosvpn/general#connection"/>
+          <Status order="30" url="/ui/pharosvpn/diagnostics/"/>
+      </PharosVPN>
+    </VPN>
+</menu>

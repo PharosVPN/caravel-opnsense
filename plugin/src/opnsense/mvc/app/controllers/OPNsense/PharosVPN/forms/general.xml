@@ -1,0 +1,20 @@
+<form>
+    <field>
+        <id>general.enabled</id>
+        <label>Enable PharosVPN</label>
+        <type>checkbox</type>
+        <help>Activate PharosVPN and bring up the enabled client connection on reconfigure / boot.</help>
+    </field>
+    <field>
+        <id>general.signer_pubkey</id>
+        <label>Profile signer public key</label>
+        <type>text</type>
+        <help>The controller's ed25519 profile-signing public key (base64). Required only to open account-mode profiles. Leave blank for none/password-mode profiles.</help>
+    </field>
+    <field>
+        <id>general.device_key</id>
+        <label>Device key (account mode)</label>
+        <type>password</type>
+        <help>This device's X25519 private key (base64), needed to open account-mode profiles unattended. Leave blank for none/password-mode profiles. Stored at rest in config.xml — prefer password-mode profiles where possible.</help>
+    </field>
+</form>

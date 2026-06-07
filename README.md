@@ -33,23 +33,50 @@ the single data-plane strategy. Cross-compiled `GOOS=freebsd`.
 - `cmd/` — the Go worker / `pharos-awg` daemon, reusing `caravel/go`'s
   `profile` / `vp` / `sync` (the `caravel-mac` BSD `ifconfig`/`route` shell ports
   closely).
-- `plugin/` — an `os-pharosvpn` OPNsense MVC plugin (GUI page, configd actions,
-  rc.d service), modelled on the in-core WireGuard plugin.
-- `packaging/` — FreeBSD `pkg` build.
+- `plugin/` — the `os-pharosvpn` OPNsense MVC plugin (GUI pages, configd actions,
+  service template, `.inc` hooks, `pharos-service-control.php`), modelled on the
+  in-core WireGuard plugin.
+- `pkg/` + `scripts/build-pkg.sh` — the FreeBSD `pkg` build (base `pharosvpn`
+  binary pkg + the `os-pharosvpn` plugin pkg).
 
 ## Status
 
-🚧 Pre-alpha. **Design complete** (see the design doc); implementation underway.
+🚧 Pre-alpha. **Design complete** (see the design doc); **client mode shipped**.
 
 - ✅ **`pharos-awg`** — the userspace AmneziaWG data-plane daemon
   ([`cmd/pharos-awg`](cmd/pharos-awg), [`internal/awgd`](internal/awgd)). Wraps
   caravel's `vp` engine over a FreeBSD tun, applies addressing/routing, serves the
-  UAPI socket. Cross-compiles `GOOS=freebsd` and is **verified on the live VM**
-  (interface bring-up/teardown, obfuscated data plane, UAPI). See
+  UAPI socket. Adds `inspect` (resolve a `.pharos`'s non-secret metadata as JSON —
+  no crypto in PHP) and `status` (read a running tunnel's UAPI as JSON).
+  Cross-compiles `GOOS=freebsd` and is **verified on the live VM** (interface
+  bring-up/teardown, obfuscated data plane, UAPI). See
   [`docs/pharos-awg.md`](docs/pharos-awg.md).
-- ⬜ FreeBSD `pkg` (rc.d + manifest) → **client mode** plugin (the headline) →
-  relay → experimental node (its cascade netpolicy needs a `pf`/`setfib` rewrite)
-  → coxswain (runs, but discouraged on an edge box).
+- ✅ **`os-pharosvpn` plugin (client mode)** — the installable OPNsense MVC plugin
+  ([`plugin/`](plugin)): a **VPN → PharosVPN** menu with Profiles / Connection /
+  Status pages, profile import + inspection, the `pharosvpn` interface group,
+  configd-managed lifecycle, a service template that renders the daemon config at
+  0600, the `.inc` reconfigure/persistence hooks, and a
+  [`pharos-service-control.php`](plugin/src/opnsense/scripts/PharosVPN/pharos-service-control.php)
+  that drives `pharos-awg`. Packaged as the `os-pharosvpn` pkg (depends on a base
+  `pharosvpn` binary pkg) — build with [`scripts/build-pkg.sh`](scripts/build-pkg.sh).
+- ⬜ Not yet: a full live tunnel through a real fleet node + LAN policy-route /
+  kill-switch leak tests + reboot persistence; relay → experimental node (its
+  cascade netpolicy needs a `pf`/`setfib` rewrite) → coxswain (discouraged on edge).
+
+### Verified vs not (on the dev VM, OPNsense 25.7 / FreeBSD 14.3)
+
+- ✅ Both pkgs build (`pkg create`) and install; `os-pharosvpn` depends on `pharosvpn`.
+- ✅ Model mounts/validates; the **VPN → PharosVPN** menu registers (3 entries); all
+  controllers instantiate; `/api/pharosvpn/*` routes resolve.
+- ✅ configd discovers all actions (start/stop/restart/configure/inspect/status);
+  `configctl pharosvpn inspect` resolves profile metadata; the service template
+  renders valid daemon JSON from the model.
+- ✅ `configctl pharosvpn configure` starts the daemon, which creates `awg0`,
+  addresses it, and serves the UAPI socket (`status` reports up + the peer/endpoint).
+- ⬜ **Untested**: a real handshake / data through a live fleet node (needs a valid
+  profile with a reachable endpoint); the `pf` outbound-NAT + policy-route +
+  kill-switch *applied end-to-end* (the plumbing is wired via the interface group +
+  service-control script, but not leak-tested); reboot-persistence path; CARP/HA.
 
 ## License
 

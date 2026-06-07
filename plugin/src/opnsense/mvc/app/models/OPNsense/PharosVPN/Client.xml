@@ -1,0 +1,110 @@
+<model>
+    <mount>//OPNsense/PharosVPN</mount>
+    <description>PharosVPN client (caravel) configuration</description>
+    <version>1.0.0</version>
+    <items>
+        <general>
+            <!--
+                Master switch. When off, pharosvpn_services()/_interfaces()/_devices()
+                return nothing, so the device + group + service disappear from OPNsense
+                and no tunnel is created on reconfigure.
+            -->
+            <enabled type="BooleanField">
+                <Default>0</Default>
+                <Required>Y</Required>
+            </enabled>
+            <!--
+                The controller's profile-signing public key (ed25519, base64), needed
+                to OPEN account-mode profiles. Sealed/password payloads stay encrypted
+                at rest; this key lets the daemon verify+open account-mode bundles.
+            -->
+            <signer_pubkey type="Base64Field"/>
+            <!--
+                The device X25519 private key (base64) for account-mode profiles. Held
+                here only so a headless firewall can open account-mode bundles; rendered
+                to the 0600 daemon config, never echoed back to the GUI.
+            -->
+            <device_key type="Base64Field"/>
+        </general>
+        <clients>
+            <!--
+                Each client = one importable PharosVPN connection: the (encrypted-at-rest)
+                profile blob plus the routing/firewall choices for it. Only one client
+                may be enabled at a time in this MVP (single awg0 interface).
+            -->
+            <client type="ArrayField">
+                <enabled type="BooleanField">
+                    <Default>0</Default>
+                    <Required>Y</Required>
+                </enabled>
+                <name type="TextField">
+                    <Required>Y</Required>
+                    <Mask>/^([0-9a-zA-Z._\- ]){1,64}$/u</Mask>
+                    <ValidationMessage>1..64 chars: letters, digits, space, dash, dot, underscore.</ValidationMessage>
+                </name>
+                <!--
+                    Stable interface name. amneziawg-go renames the cloned tun to this,
+                    matching the ^awg device pattern so OPNsense can assign/group it.
+                -->
+                <interface type="TextField">
+                    <Default>awg0</Default>
+                    <Required>Y</Required>
+                    <Mask>/^awg[0-9]{1,3}$/u</Mask>
+                    <ValidationMessage>Must be awg0..awg999.</ValidationMessage>
+                </interface>
+                <!--
+                    The imported .pharos blob, base64-encoded. Account/password payloads
+                    are already encrypted in the envelope, so they stay sealed in
+                    config.xml (DESIGN §6). The daemon decrypts; PHP never does crypto.
+                -->
+                <profile type="Base64Field">
+                    <Required>Y</Required>
+                    <ValidationMessage>Import a .pharos profile first.</ValidationMessage>
+                </profile>
+                <!--
+                    Password for a password-mode profile (kept so the daemon can open it
+                    unattended on reboot). Empty for none/account-mode profiles.
+                -->
+                <password type="TextField"/>
+                <!-- Selected named connection config (ClientProfile id) inside the bundle. -->
+                <selected_profile type="TextField"/>
+                <!-- Selected entry node id; empty = the profile's cascade entry/first hop. -->
+                <selected_node type="TextField"/>
+                <!-- full | split | none — how the host routing table is set up. -->
+                <routing type="OptionField">
+                    <Default>none</Default>
+                    <Required>Y</Required>
+                    <OptionValues>
+                        <full>Full tunnel (default route)</full>
+                        <split>Split tunnel (AllowedIPs only)</split>
+                        <none>None (pf policy routing owns it)</none>
+                    </OptionValues>
+                </routing>
+                <mtu type="IntegerField">
+                    <MinimumValue>1280</MinimumValue>
+                    <MaximumValue>9200</MaximumValue>
+                    <ValidationMessage>MTU must be 1280..9200.</ValidationMessage>
+                </mtu>
+                <!--
+                    LAN source networks/hosts to policy-route through the tunnel. Empty =
+                    route nothing automatically (the box's own traffic is never routed —
+                    DESIGN §7). Used to build the pf policy-route + kill-switch rules.
+                -->
+                <lan_sources type="NetworkField">
+                    <AsList>Y</AsList>
+                    <NetMaskAllowed>Y</NetMaskAllowed>
+                    <ValidationMessage>Use valid IPv4/IPv6 networks or hosts.</ValidationMessage>
+                </lan_sources>
+                <!--
+                    Fail closed: when set, the service-control script installs a block on
+                    the kill-switch sources so LAN traffic does not leak to the ISP if the
+                    tunnel drops. Off by default.
+                -->
+                <killswitch type="BooleanField">
+                    <Default>0</Default>
+                    <Required>Y</Required>
+                </killswitch>
+            </client>
+        </clients>
+    </items>
+</model>

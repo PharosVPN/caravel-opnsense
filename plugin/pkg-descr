@@ -1,0 +1,21 @@
+PharosVPN client for OPNsense (os-pharosvpn)
+
+A GUI plugin that turns an OPNsense firewall into a PharosVPN (caravel) client:
+import a .pharos profile, bring up the userspace obfuscated AmneziaWG tunnel, and
+route selected LAN sources through it — with policy routing, an optional
+kill-switch, and a live status page.
+
+CLIENT MODE only. Server components (node / relay / coxswain) are out of scope.
+
+Provides:
+  * A VPN -> PharosVPN menu with Profiles, Connection, and Status pages.
+  * Profile import + inspection (resolved nodes / egress path / expiry / fleet),
+    with all profile decryption handled by the pharos-awg daemon (no crypto in
+    PHP); encrypted-mode payloads stay sealed at rest in config.xml.
+  * configd-managed lifecycle, a 'pharosvpn' interface group for pf rules, and
+    reconfigure-on-boot persistence.
+
+Depends on the base 'pharosvpn' package (pharos-awg daemon + rc.d).
+
+Status: pre-alpha. The tunnel data plane is verified on the dev VM; full
+end-to-end LAN routing through a live fleet node is not yet verified.

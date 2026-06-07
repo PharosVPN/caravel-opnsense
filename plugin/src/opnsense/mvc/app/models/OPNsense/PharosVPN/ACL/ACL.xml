@@ -1,0 +1,18 @@
+<acl>
+   <page-pharosvpn-config>
+      <name>VPN: PharosVPN: Configuration</name>
+      <patterns>
+         <pattern>ui/pharosvpn/*</pattern>
+         <pattern>api/pharosvpn/client/*</pattern>
+         <pattern>api/pharosvpn/general/*</pattern>
+         <pattern>api/pharosvpn/service/*</pattern>
+      </patterns>
+   </page-pharosvpn-config>
+   <page-pharosvpn-diagnostics>
+      <name>VPN: PharosVPN: Status</name>
+      <patterns>
+         <pattern>ui/pharosvpn/diagnostics/*</pattern>
+         <pattern>api/pharosvpn/service/*</pattern>
+      </patterns>
+   </page-pharosvpn-diagnostics>
+</acl>

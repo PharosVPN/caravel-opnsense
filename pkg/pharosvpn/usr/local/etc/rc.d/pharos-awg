@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# PROVIDE: pharos_awg
+# REQUIRE: NETWORKING
+# KEYWORD: nojail
+#
+# PharosVPN userspace AmneziaWG data-plane daemon. configd starts/stops it per
+# interface via pharos-service-control.php; this rc.d script exists for manual
+# control and is NOT enabled directly in rc.conf (mirroring how WireGuard is
+# configd-managed on OPNsense).
+#
+# Enable (not recommended; let configd own the lifecycle):
+#   sysrc pharos_awg_enable=YES
+#   service pharos-awg start
+#
+. /etc/rc.subr
+
+name=pharos_awg
+rcvar=pharos_awg_enable
+desc="PharosVPN userspace AmneziaWG daemon"
+
+load_rc_config $name
+
+: ${pharos_awg_enable:="NO"}
+: ${pharos_awg_config:="/usr/local/etc/pharosvpn/awg0.conf"}
+
+command="/usr/local/sbin/pharos-awg"
+command_args="--config ${pharos_awg_config}"
+pidfile="/var/run/pharosvpn/pharos-awg.pid"
+
+start_precmd="pharos_awg_precmd"
+pharos_awg_precmd()
+{
+    /bin/mkdir -p /var/run/pharosvpn
+}
+
+# Run in the background under daemon(8) so rc.d can track the pidfile.
+command="/usr/sbin/daemon"
+command_args="-f -P ${pidfile} /usr/local/sbin/pharos-awg --config ${pharos_awg_config}"
+
+run_rc_command "$1"

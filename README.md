@@ -59,9 +59,23 @@ the single data-plane strategy. Cross-compiled `GOOS=freebsd`.
   [`pharos-service-control.php`](plugin/src/opnsense/scripts/PharosVPN/pharos-service-control.php)
   that drives `pharos-awg`. Packaged as the `os-pharosvpn` pkg (depends on a base
   `pharosvpn` binary pkg) — build with [`scripts/build-pkg.sh`](scripts/build-pkg.sh).
-- ⬜ Not yet: a full live tunnel through a real fleet node + LAN policy-route /
-  kill-switch leak tests + reboot persistence; relay → experimental node (its
-  cascade netpolicy needs a `pf`/`setfib` rewrite) → coxswain (discouraged on edge).
+- ✅ **Client-mode LAN routing/NAT/kill-switch** — enabling a client now applies
+  the firewall/routing layer through OPNsense's own config model (not raw pf
+  anchors): a per-client **gateway** (`PharosVPN_<IF>`) bound to the awg device, an
+  **outbound-NAT** rule masquerading the selected LAN sources out the tunnel, a
+  **policy-route** pass sending those sources to the gateway (split mode scopes it
+  to the profile's AllowedIPs), and an optional **kill-switch** block that fails
+  closed if the tunnel drops. Generated from the model on every filter reload via
+  the `pharosvpn_firewall($fw)` hook + the service-control script
+  ([`FirewallRules`](plugin/src/opnsense/mvc/app/library/OPNsense/PharosVPN/FirewallRules.php)) —
+  idempotent (re-apply replaces, never duplicates) and reversible (disable =
+  clean teardown). Only the explicitly selected `lan_sources` are routed; the
+  box's own management/control path is never touched (DESIGN §3.2, §7).
+- ⬜ Not yet: a full live tunnel through a real fleet node + an end-to-end
+  **leak test** of the applied routing (rule *generation/teardown* + no-self-
+  lockout are verified on the VM, but a real handshake/data path is not) +
+  reboot persistence; relay → experimental node (its cascade netpolicy needs a
+  `pf`/`setfib` rewrite) → coxswain (discouraged on edge).
 
 ### Verified vs not (on the dev VM, OPNsense 25.7 / FreeBSD 14.3)
 
@@ -73,10 +87,16 @@ the single data-plane strategy. Cross-compiled `GOOS=freebsd`.
   renders valid daemon JSON from the model.
 - ✅ `configctl pharosvpn configure` starts the daemon, which creates `awg0`,
   addresses it, and serves the UAPI socket (`status` reports up + the peer/endpoint).
+- ✅ **Client-mode routing generation + teardown + no-self-lockout**: with a client
+  enabled (LAN source `192.168.99.0/24`, kill-switch on) and a tunnel member in the
+  `pharosvpn` group, the `PharosVPN_AWG0` gateway, the `nat on pharosvpn … -> <addr>`
+  outbound-NAT, the `route-to ( awg0 … )` policy-route pass, and the kill-switch
+  block all appear in `config.xml` and load into `pfctl -sr`/`-sn`. Disabling →
+  every rule + the gateway is gone, the routes-state cleared, and the box's own
+  connectivity stayed intact throughout (the management subnet was never routed).
 - ⬜ **Untested**: a real handshake / data through a live fleet node (needs a valid
-  profile with a reachable endpoint); the `pf` outbound-NAT + policy-route +
-  kill-switch *applied end-to-end* (the plumbing is wired via the interface group +
-  service-control script, but not leak-tested); reboot-persistence path; CARP/HA.
+  profile with a reachable endpoint) and the consequent **leak test** of the applied
+  routing; reboot-persistence path; CARP/HA.
 
 ## License
 

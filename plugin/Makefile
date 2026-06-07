@@ -7,7 +7,7 @@
 # ../scripts/build-pkg.sh to hand-assemble the pkg on a FreeBSD box.
 
 PLUGIN_NAME=		pharosvpn
-PLUGIN_VERSION=		1.0.0
+PLUGIN_VERSION=		1.1.0
 PLUGIN_COMMENT=		PharosVPN client (caravel) for OPNsense
 PLUGIN_DEPENDS=		pharosvpn
 PLUGIN_MAINTAINER=	dev@pharosvpn.invalid

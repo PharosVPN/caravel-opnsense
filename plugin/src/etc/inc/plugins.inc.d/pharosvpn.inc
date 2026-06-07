@@ -149,6 +149,24 @@ function pharosvpn_configure_do($verbose = false)
 }
 
 /**
+ * Firewall hook: OPNsense calls this on every filter reload (plugins_firewall).
+ * It (re)generates the client-mode LAN routing layer — outbound NAT + the
+ * policy-route pass to the per-client gateway + the optional kill-switch — from
+ * the model, through OPNsense's own Firewall\Plugin (not raw pf anchors). Because
+ * the rules are derived from the model each reload, they are idempotent (never
+ * duplicated) and reversible (gone the moment a client is disabled). Only the
+ * explicitly selected lan_sources are routed; the box's own management/control
+ * path is never touched (DESIGN §3.2, §7).
+ */
+function pharosvpn_firewall($fw)
+{
+    if (!pharosvpn_enabled()) {
+        return;
+    }
+    \OPNsense\PharosVPN\FirewallRules::registerFilterRules($fw);
+}
+
+/**
  * Syslog facility registration so the daemon's messages land in their own log.
  */
 function pharosvpn_syslog()

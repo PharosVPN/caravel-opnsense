@@ -15,7 +15,7 @@
         <id>client.interface</id>
         <label>Interface</label>
         <type>text</type>
-        <help>The tun interface name (awg0..awg999). Assign it under Interfaces and target the 'pharosvpn' group in firewall rules.</help>
+        <help>The tun interface name (awg0..awg999). The plugin joins it to the 'pharosvpn' group and, from the LAN sources below, generates the gateway, outbound NAT, policy-route and kill-switch automatically.</help>
     </field>
     <field>
         <id>client.profile</id>
@@ -59,7 +59,7 @@
         <label>LAN sources to route</label>
         <type>text</type>
         <style>tokenize</style>
-        <help>LAN networks/hosts to policy-route through the tunnel (e.g. 192.168.1.0/24). The firewall's own / management traffic is never routed. Leave empty to add no automatic policy-route.</help>
+        <help>LAN networks/hosts to policy-route through the tunnel (e.g. 192.168.1.0/24). These get an outbound-NAT + route-to-gateway pass (and a kill-switch block if enabled); only these sources are routed — the firewall's own / management traffic is never touched. Leave empty to route nothing automatically. Do NOT list the management subnet or you may lock yourself out.</help>
     </field>
     <field>
         <id>client.killswitch</id>

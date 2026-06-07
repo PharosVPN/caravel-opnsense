@@ -31,6 +31,7 @@ require_once('interfaces.inc');
 require_once('system.inc');
 
 use OPNsense\PharosVPN\Client;
+use OPNsense\PharosVPN\FirewallRules;
 
 const PHAROS_BIN = '/usr/local/sbin/pharos-awg';
 const PHAROS_RC = '/usr/local/etc/rc.d/pharos-awg';
@@ -94,11 +95,66 @@ function pharos_start($client)
     if (does_interface_exist($if)) {
         mwexecf('/sbin/ifconfig %s group pharosvpn', [$if]);
         interfaces_restart_by_device(false, [$if]);
+        /*
+         * The tunnel is up: record its address + AllowedIPs and (re)create the
+         * per-client gateway, so the firewall hook can build the outbound-NAT,
+         * policy-route, and (optional) kill-switch on the filter reload below.
+         */
+        pharos_apply_routing($client);
     } else {
         syslog(LOG_ERR, "pharosvpn: interface {$if} did not come up");
     }
 
     syslog(LOG_NOTICE, "pharosvpn instance {$client->name} ({$if}) started");
+}
+
+/**
+ * Record the running tunnel's address + AllowedIPs to the routes state file and
+ * (re)create the per-client gateway. The actual NAT/policy-route/kill-switch
+ * rules are then emitted by the pharosvpn_firewall($fw) hook on the next filter
+ * reload (the caller runs `configd filter reload`). Idempotent.
+ */
+function pharos_apply_routing($client)
+{
+    $if = (string)$client->interface;
+
+    /* interface address (point-to-point: local == far for an awg tun) */
+    $addr = '';
+    $details = legacy_interface_details($if);
+    if (!empty($details['ipv4'][0]['ipaddr'])) {
+        $addr = (string)$details['ipv4'][0]['ipaddr'];
+    }
+
+    /*
+     * AllowedIPs from the live UAPI status (for split-tunnel destinations). Read
+     * the daemon binary directly — we are already inside a configd action, so a
+     * nested configd call would be wrong; this mirrors pharos_status().
+     */
+    $allowed = [];
+    $out = shell_exec(PHAROS_BIN . ' status --interface ' . escapeshellarg($if) . ' 2>/dev/null');
+    $st = json_decode((string)$out, true);
+    if (is_array($st) && !empty($st['peers'])) {
+        foreach ($st['peers'] as $peer) {
+            if (!empty($peer['allowed_ips'])) {
+                foreach (explode(',', (string)$peer['allowed_ips']) as $cidr) {
+                    $cidr = trim($cidr);
+                    if ($cidr !== '') {
+                        $allowed[$cidr] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    FirewallRules::writeRoutesState($if, $addr, array_keys($allowed));
+    FirewallRules::syncGateway($if, $addr);
+}
+
+/** Tear down the per-client gateway + routes state for an interface. */
+function pharos_remove_routing(string $if)
+{
+    FirewallRules::removeGateway($if);
+    FirewallRules::clearRoutesState($if);
 }
 
 /** Stop the pharos-awg daemon for a client interface and drop the device. */
@@ -119,6 +175,8 @@ function pharos_stop($client)
     if (does_interface_exist($if)) {
         legacy_interface_destroy($if);
     }
+    /* drop the gateway + routes state so the firewall hook stops emitting rules */
+    pharos_remove_routing($if);
     syslog(LOG_NOTICE, "pharosvpn instance {$client->name} ({$if}) stopped");
 }
 
@@ -150,10 +208,44 @@ function pharos_configure()
                 @unlink($pidfile);
             }
             @unlink($blob);
+            /* drop its gateway + routes state too */
+            pharos_remove_routing($dev);
         }
     }
+    /*
+     * Also drop any orphan PharosVPN gateway whose interface is no longer active
+     * (e.g. a client was deleted outright, leaving no blob to match above).
+     */
+    pharos_prune_gateways($active);
+
     /* interface was recreated; refresh pf so NAT/policy rules re-bind */
     configd_run('filter reload');
+}
+
+/**
+ * Remove any PharosVPN_* gateway whose interface is not in the active set, so a
+ * deleted/disabled client leaves the firewall config exactly as it was.
+ */
+function pharos_prune_gateways(array $activeInterfaces)
+{
+    $gateways = new \OPNsense\Routing\Gateways();
+    $changed = false;
+    foreach ($gateways->gateway_item->iterateItems() as $key => $item) {
+        $name = (string)$item->name;
+        if (strpos($name, 'PharosVPN_') !== 0) {
+            continue;
+        }
+        $iface = (string)$item->interface;
+        if (!in_array($iface, $activeInterfaces, true)) {
+            $gateways->gateway_item->del($key);
+            FirewallRules::clearRoutesState($iface);
+            $changed = true;
+        }
+    }
+    if ($changed) {
+        $gateways->serializeToConfig(false, true);
+        \OPNsense\Core\Config::getInstance()->save();
+    }
 }
 
 /** inspect a .pharos profile (delegates to the Go daemon, emits JSON). */
